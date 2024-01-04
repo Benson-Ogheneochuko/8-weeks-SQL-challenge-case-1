@@ -1,0 +1,115 @@
+--HIGH LEVEL SALES ANALYSIS
+====================================
+
+-- What was the total quantity sold for all products?
+SELECT 
+	prod_id,
+    SUM(qty) AS total_quantity_sold
+FROM 
+	balanced_tree.sales
+GROUP BY
+	prod_id;
+    
+-- ===================================================
+-- What is the total generated revenue for all products before discounts?
+SELECT
+	prod_id,
+    SUM(qty * price) AS revenue_before_discounts
+FROM 
+	balanced_tree.sales
+GROUP BY
+	prod_id;
+
+-- ==================================
+--What was the total discount amount for all products?
+SELECT 
+	prod_id,
+    sum(discount) discount
+FROM 
+	balanced_tree.sales
+GROUP 
+	prod_id;
+
+
+=======================================================================
+-- TRANSACTION ANALYSIS
+=======================================================================
+
+
+-- How many unique transactions were there?
+SELECT
+	COUNT (DISTINCT txn_id)
+FROM 
+	balanced_tree.sales;
+    
+-- ===================================
+-- What is the average unique products purchased in each transaction?
+SELECT
+    txn_id,
+    AVG(unique_products) AS avg_unique_products,
+    SUM(qty) AS total_quantity
+FROM (
+    SELECT
+        txn_id,
+        prod_id,
+        COUNT(DISTINCT prod_id) AS unique_products,
+        SUM(qty) AS qty
+    FROM
+        balanced_tree.sales
+    GROUP BY
+        txn_id, prod_id
+) AS subquery
+GROUP BY
+    txn_id;
+
+-- ====================================
+-- What are the 25th, 50th and 75th percentile values for the revenue per transaction?
+SELECT 
+    PERCENTILE_CONT(0.25) WITHIN GROUP (ORDER BY revenue) AS percentile_25,
+    PERCENTILE_CONT(0.50) WITHIN GROUP (ORDER BY revenue) AS median,
+    PERCENTILE_CONT(0.75) WITHIN GROUP (ORDER BY revenue) AS percentile_75
+FROM (
+    SELECT 
+        txn_id,
+        SUM((qty * price) - discount) AS revenue
+    FROM
+        balanced_tree.sales
+    GROUP BY
+        txn_id
+) AS subquery;
+
+
+-- ====================================
+-- What is the average discount value per transaction?
+SELECT
+	txn_id,
+    AVG(discount) AS avg_discount
+FROM
+	balanced_tree.sales
+GROUP BY
+	txn_id;
+
+
+-- =======================================
+-- What is the percentage split of all transactions for members vs non-members?
+SELECT
+    member,
+    (COUNT(DISTINCT txn_id)::numeric / 
+        (SELECT COUNT(DISTINCT txn_id) FROM balanced_tree.sales)
+    ) * 100 AS perc_txn
+FROM
+    balanced_tree.sales
+GROUP BY
+    member;
+
+
+-- ======================================
+-- What is the average revenue for member transactions and non-member transactions?
+SELECT
+	member,
+    AVG((qty * price) - discount) AS avg_revenue
+FROM
+    balanced_tree.sales
+GROUP BY
+    member;
+    
